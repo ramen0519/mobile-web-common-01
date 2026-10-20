@@ -1,0 +1,65 @@
+{% extends 'blog/base.html' %}
+
+{% block content %}
+    <h1>New post</h1>
+    {% if draft %}
+    <!-- 임시 저장된 글 -->
+    <div id="draft-box" class="alert alert-info">
+        임시 저장된 글이 있습니다. ({{ draft.saved }})
+        <button type="button" id="btn-draft-load" class="btn btn-default btn-xs">불러오기</button>
+        <button type="button" id="btn-draft-delete" class="btn btn-link btn-xs">지우기</button>
+    </div>
+    {{ draft|json_script:"draft-data" }}
+    {% endif %}
+    <form method="POST" class="post-form">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <span id="draft-status" class="date"></span>
+        <button type="submit" class="save btn btn-default">Save</button>
+    </form>
+
+    <script>
+        const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const title = document.getElementById('id_title');
+        const text = document.getElementById('id_text');
+        const postId = '{{ post_id|default:"" }}';
+        let saveTimer = null;
+
+        function post(url, data) {
+            const body = new FormData();
+            body.append('csrfmiddlewaretoken', csrf);
+            for (const key in data) {
+                body.append(key, data[key]);
+            }
+            return fetch(url, {method: 'POST', body: body}).then(response => response.json());
+        }
+
+        // 입력을 멈추고 2초가 지나면 서버에 임시 저장
+        function autoSave() {
+            clearTimeout(saveTimer);
+            document.getElementById('draft-status').textContent = '입력 중...';
+            saveTimer = setTimeout(function () {
+                post('{% url "draft_save" %}', {title: title.value, text: text.value, post: postId}).then(result => {
+                    document.getElementById('draft-status').textContent = '자동 저장됨 ' + result.saved;
+                });
+            }, 2000);
+        }
+        title.addEventListener('input', autoSave);
+        text.addEventListener('input', autoSave);
+
+        {% if draft %}
+        const draft = JSON.parse(document.getElementById('draft-data').textContent);
+        document.getElementById('btn-draft-load').addEventListener('click', function () {
+            title.value = draft.title;
+            text.value = draft.text;
+            document.getElementById('draft-box').remove();
+            document.getElementById('draft-status').textContent = '임시 저장된 글을 불러왔습니다.';
+        });
+        document.getElementById('btn-draft-delete').addEventListener('click', function () {
+            post('{% url "draft_delete" %}', {post: postId}).then(() => {
+                document.getElementById('draft-box').remove();
+            });
+        });
+        {% endif %}
+    </script>
+{% endblock %}

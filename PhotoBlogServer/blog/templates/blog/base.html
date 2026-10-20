@@ -1,0 +1,61 @@
+{% load static %}
+{% load blog_tags %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Web Service project web-blog</title>
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
+    <link href='//fonts.googleapis.com/css?family=Lobster&subset=latin,latin-ext' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="{% static 'css/blog.css' %}">
+</head>
+<body>
+    <div class="page-header">
+        {% if user.is_authenticated %}
+        <a href="{% url 'post_new' %}" class="top-menu">
+            <span class="glyphicon glyphicon-plus"></span>
+        </a>
+        <div class="user-menu">
+            {{ user|nickname }}님 |
+            <a href="{% url 'notification_list' %}">
+                <span class="glyphicon glyphicon-bell"></span> 알림
+                <span id="unread-count" class="badge"{% if not unread_count %} style="display: none;"{% endif %}>{{ unread_count }}</span>
+            </a> |
+            <a href="{% url 'chat' %}">채팅</a> |
+            <form method="POST" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit">로그아웃</button>
+            </form>
+        </div>
+        {% else %}
+        <div class="user-menu">
+            <a href="{% url 'login' %}">로그인</a> |
+            <a href="{% url 'signup' %}">회원가입</a>
+        </div>
+        {% endif %}
+        <h1><a href="/">Web Service project web-blog</a></h1>
+    </div>
+    <div class="content container">
+        <div class="row">
+            <div class="col-md-8">
+                {% block content %}
+                {% endblock %}
+            </div>
+        </div>
+    </div>
+    {% if user.is_authenticated %}
+    <script>
+        // 안 읽은 알림 개수를 10초마다 확인 (새로고침 없이 배지 갱신)
+        setInterval(function () {
+            fetch('{% url "notification_count" %}')
+                .then(response => response.json())
+                .then(result => {
+                    const badge = document.getElementById('unread-count');
+                    badge.textContent = result.count;
+                    badge.style.display = result.count > 0 ? '' : 'none';
+                });
+        }, 10000);
+    </script>
+    {% endif %}
+</body>
+</html>

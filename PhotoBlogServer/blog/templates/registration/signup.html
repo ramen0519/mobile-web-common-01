@@ -1,0 +1,154 @@
+{% extends 'blog/base.html' %}
+
+{% block content %}
+    <h1>회원가입</h1>
+    <form method="POST" class="account-form clearfix">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <div class="form-group">
+            <label for="id_username">아이디</label>
+            {{ form.username }}
+            {{ form.username.errors }}
+        </div>
+        <div class="form-group">
+            <label for="id_password1">비밀번호</label>
+            {{ form.password1 }}
+            <div class="help-block">{{ form.password1.help_text|safe }}</div>
+            {{ form.password1.errors }}
+        </div>
+        <div class="form-group">
+            <label for="id_password2">비밀번호 확인</label>
+            {{ form.password2 }}
+            {{ form.password2.errors }}
+        </div>
+        <div class="form-group">
+            <label for="id_nickname">닉네임</label>
+            {{ form.nickname }}
+            {{ form.nickname.errors }}
+        </div>
+
+        <!-- 이메일 인증 -->
+        <div class="form-group">
+            <label for="id_email">이메일</label>
+            <div class="input-group">
+                {{ form.email }}
+                <span class="input-group-btn">
+                    <button type="button" id="btn-send" class="btn btn-default">인증코드 받기</button>
+                </span>
+            </div>
+            {{ form.email.errors }}
+        </div>
+        <div class="form-group">
+            <label for="code">인증코드</label>
+            <div class="input-group">
+                <input type="text" id="code" class="form-control" maxlength="6" placeholder="메일로 받은 6자리 숫자">
+                <span class="input-group-btn">
+                    <button type="button" id="btn-verify" class="btn btn-default">확인</button>
+                </span>
+            </div>
+            <span id="email-message"></span>
+            <span id="timer"></span>
+        </div>
+
+        <button type="submit" id="btn-signup" class="save btn btn-primary" disabled>가입하기</button>
+    </form>
+    <a href="{% url 'kakao_login' %}" class="btn btn-block btn-kakao">카카오로 시작하기</a>
+
+    <script>
+        const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const email = document.getElementById('id_email');
+        const code = document.getElementById('code');
+        const btnSend = document.getElementById('btn-send');
+        const btnVerify = document.getElementById('btn-verify');
+        const btnSignup = document.getElementById('btn-signup');
+        let timer = null;
+        let resendTimer = null;
+
+        function post(url, data) {
+            const body = new FormData();
+            body.append('csrfmiddlewaretoken', csrf);
+            for (const key in data) {
+                body.append(key, data[key]);
+            }
+            return fetch(url, {method: 'POST', body: body}).then(response => response.json());
+        }
+
+        function showMessage(text, ok) {
+            const message = document.getElementById('email-message');
+            message.textContent = text;
+            message.className = ok ? 'text-success' : 'text-danger';
+        }
+
+        // 인증 유효시간 5분 표시
+        function startTimer() {
+            let seconds = 300;
+            clearInterval(timer);
+            timer = setInterval(function () {
+                seconds -= 1;
+                const m = Math.floor(seconds / 60);
+                const s = String(seconds % 60).padStart(2, '0');
+                document.getElementById('timer').textContent = '남은 시간 ' + m + ':' + s;
+                if (seconds <= 0) {
+                    clearInterval(timer);
+                    document.getElementById('timer').textContent = '';
+                    showMessage('인증 시간이 지났습니다. 코드를 다시 받아 주세요.', false);
+                }
+            }, 1000);
+        }
+
+        // 다시 받기는 1분 뒤에
+        function waitResend() {
+            let seconds = 60;
+            btnSend.disabled = true;
+            resendTimer = setInterval(function () {
+                seconds -= 1;
+                btnSend.textContent = '다시 받기 (' + seconds + ')';
+                if (seconds <= 0) {
+                    clearInterval(resendTimer);
+                    btnSend.disabled = false;
+                    btnSend.textContent = '다시 받기';
+                }
+            }, 1000);
+        }
+
+        function verified() {
+            clearInterval(timer);
+            clearInterval(resendTimer);
+            document.getElementById('timer').textContent = '';
+            btnSend.textContent = '인증 완료';
+            email.readOnly = true;
+            code.readOnly = true;
+            btnSend.disabled = true;
+            btnVerify.disabled = true;
+            btnSignup.disabled = false;
+        }
+
+        btnSend.addEventListener('click', function () {
+            btnSend.disabled = true;
+            post('{% url "send_code" %}', {email: email.value}).then(result => {
+                showMessage(result.message, result.ok);
+                if (result.ok) {
+                    startTimer();
+                    waitResend();
+                    code.focus();
+                } else {
+                    btnSend.disabled = false;
+                }
+            });
+        });
+
+        btnVerify.addEventListener('click', function () {
+            post('{% url "verify_code" %}', {email: email.value, code: code.value}).then(result => {
+                showMessage(result.message, result.ok);
+                if (result.ok) {
+                    verified();
+                }
+            });
+        });
+
+        {% if verified %}
+        verified();
+        showMessage('이메일 인증이 완료되었습니다.', true);
+        {% endif %}
+    </script>
+{% endblock %}

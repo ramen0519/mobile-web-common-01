@@ -1,0 +1,27 @@
+{% extends 'blog/base.html' %}
+{% load blog_tags %}
+
+{% block content %}
+    <h1>알림</h1>
+    <form method="POST" action="{% url 'notification_read_all' %}" class="notification-form">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-default btn-sm">모두 읽음</button>
+    </form>
+    <ul class="list-group">
+        {% for notification in notifications %}
+        <li class="list-group-item{% if not notification.is_read %} unread{% endif %}">
+            <a href="{% url 'notification_read' pk=notification.pk %}">
+                <strong>{{ notification.sender|nickname }}</strong>님이 "{{ notification.post.title }}" 글에
+                {% if notification.like_id %}
+                좋아요를 눌렀습니다.
+                {% else %}
+                댓글을 남겼습니다: {{ notification.comment.text|truncatechars:30 }}
+                {% endif %}
+            </a>
+            <span class="date">{{ notification.created_date|date:"Y-m-d H:i" }}</span>
+        </li>
+        {% empty %}
+        <li class="list-group-item">알림이 없습니다.</li>
+        {% endfor %}
+    </ul>
+{% endblock %}

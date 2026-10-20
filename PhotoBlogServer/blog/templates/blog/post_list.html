@@ -1,0 +1,36 @@
+{% extends 'blog/base.html' %}
+
+{% block content %}
+    <!-- 실시간 인기 글 -->
+    <div class="ranking well">
+        <h4><span class="glyphicon glyphicon-fire"></span> 실시간 인기 글</h4>
+        {% if ranking %}
+        <ol>
+            {% for post in ranking %}
+            <li>
+                <a href="{% url 'post_detail' pk=post.pk %}">{{ post.title }}</a>
+                <span class="date">조회 {{ post.views_24h }} · 좋아요 {{ post.likes_24h }} · 댓글 {{ post.comments_24h }} ({{ post.score }}점)</span>
+            </li>
+            {% endfor %}
+        </ol>
+        {% else %}
+        <p>최근 24시간 동안 반응이 있는 글이 없습니다.</p>
+        {% endif %}
+        <small class="date">최근 24시간 반응 기준 · 조회 1점, 좋아요 3점, 댓글 5점</small>
+    </div>
+
+    {% for post in posts %}
+    <div class="post">
+        <div class="date">
+            {{ post.published_date }}
+        </div>
+        <h1><a href="{% url 'post_detail' pk=post.pk %}">{{ post.title }}</a></h1>
+        <img src="{{ post.image.url }}" class="rounded intruder-image-list" alt="{{post.title}}">
+        <p class="post-count">
+            조회 {{ post.view_count }} ·
+            <span class="glyphicon glyphicon-heart"></span> {{ post.like_count }} ·
+            <span class="glyphicon glyphicon-comment"></span> {{ post.comment_count }}
+        </p>
+    </div>
+    {% endfor %}
+{% endblock %}
